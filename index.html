@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+ <meta charset="UTF-8" />
+ <title>綸綸飲料店 線上點餐系統</title>
+ <style>
+  body {
+    font-family: sans-serif;
+    background: #f6f6f6;
+    padding: 20px;
+    font-size: 16px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 24px;
+  }
+  .category {
+    margin-top: 30px;
+  }
+  .category h2 {
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 5px;
+    font-size: 20px;
+  }
+  .menu-item {
+    background: #fff;
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+    flex-wrap: wrap; /* 允許項目換行 */
+  }
+  .menu-item .item-info {
+    flex: 2;
+    min-width: 180px; /* 確保資訊區塊有足夠寬度 */
+  }
+  .menu-item .quantity-group {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 120px; /* 確保數量區塊有足夠寬度 */
+    margin-left: 10px;
+  }
+  .btn {
+    padding: 6px 10px;
+    cursor: pointer;
+    background-color: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    margin: 5px 5px 5px 0;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+  }
+  .btn:hover {
+    background-color: #e68900;
+  }
+  #menu-view, #cart-view {
+    display: none;
+  }
+  .form-group {
+    margin: 10px 0;
+  }
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 16px;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+  .sugar-level, .ice-level {
+    width: auto; /* 讓下拉選單根據內容調整寬度 */
+    margin-right: 5px; /* 讓糖度冰度之間有間隔 */
+    max-width: 150px; /* 限制下拉選單最大寬度 */
+  }
+  .add-on-options {
+      margin-top: 5px;
+      font-size: 14px;
+      padding-top: 5px;
+      border-top: 1px dashed #eee;
+  }
+  .add-on-options label {
+      display: inline-block;
+      margin-right: 10px;
+      margin-bottom: 5px;
+  }
+  #cart-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px dashed #eee;
+  }
+  #cart-list li:last-child {
+      border-bottom: none;
+  }
+  #cart-list .item-actions {
+      display: flex;
+      gap: 5px;
+  }
+  #cart-list .item-actions .btn-small {
+      padding: 4px 8px;
+      font-size: 14px;
+      background-color: #007bff;
+  }
+  #cart-list .item-actions .btn-small.delete {
+      background-color: #dc3545;
+  }
+  #cart-list .item-actions .btn-small:hover {
+      opacity: 0.9;
+  }
+ </style>
+</head>
+<body>
+ <h1>綸綸飲料店 線上點餐系統</h1>
+
+<div id="success-view" style="display:none;">
+ <h2>感謝您的訂購！</h2>
+ <p>我們將為您準備餐點，預計時間為 2~5 分鐘，如遇尖峰時段還請您耐心等候。<br>造成不便，敬請見諒！</p>
+</div>
+
+ <div id="menu-view">
+   <div id="menu"></div>
+   <button class="btn" onclick="showCart()">查看購物車</button>
+ </div>
+
+ <div id="cart-view">
+   <h2>🛒 購物車頁面</h2>
+   <ul id="cart-list"></ul>
+   <p>💵 總金額：<span id="total">0</span> 元</p>
+
+   <div class="form-group">
+     <label for="name">姓名：</label>
+     <input type="text" id="name" placeholder="請輸入姓名">
+   </div>
+   <div class="form-group">
+     <label for="phone">電話：</label>
+     <input type="text" id="phone" placeholder="請輸入電話">
+   </div>
+   <div class="form-group">
+     <label for="orderType">用餐方式：</label>
+     <select id="orderType" onchange="toggleAddress()">
+       <option value="內用">內用</option>
+       <option value="外帶">外帶</option>
+       <option value="外送">外送</
+       option>
+     </select>
+   </div>
+   <div class="form-group" id="addressGroup" style="display:none">
+     <label for="address">地址（限外送填寫）：</label>
+     <input type="text" id="address" placeholder="請輸入外送地址">
+   </div>
+   <div class="form-group">
+     <label for="payment">付款方式：</label>
+     <select id="payment" onchange="toggleBarcode()">
+       <option value="現金">現金</option>
+       <option value="信用卡">信用卡</option>
+       <option value="LINE PAY">LINE PAY</option>
+       <option value="APPLE PAY">APPLE PAY</option>
+     </select>
+     <div class="form-group" id="paymentBarcodeGroup" style="display:none">
+       <label id="paymentBarcodeLabel" for="paymentBarcodeInput">請輸入付款碼：</label>
+       <input type="text" id="paymentBarcodeInput" placeholder="請輸入付款碼">
+     </div>
+   </div>
+
+   <div class="form-group">
+     <label for="invoiceType">發票給予方式：</label>
+     <select id="invoiceType" onchange="toggleInvoiceFields()">
+       <option value="紙本發票">紙本發票</option>
+       <option value="載具">載具</option>
+       <option value="統編">統編</option>
+     </select>
+   </div>
+
+   <div class="form-group" id="carrierGroup" style="display:none">
+     <label for="carrier">載具條碼：</label>
+     <input type="text" id="carrier" placeholder="請輸入載具條碼">
+   </div>
+
+   <div class="form-group" id="taxIdGroup" style="display:none">
+     <label for="taxId">統一編號：</label>
+     <input type="text" id="taxId" placeholder="請輸入統一編號">
+   </div>
+
+   <div class="form-group">
+     <label for="notes">備註：</label>
+     <textarea id="notes" rows="3" placeholder="例如：少冰、微糖、不要加珍珠、送餐前請電聯..."></textarea>
+   </div>
+   <button class="btn" onclick="submitOrder()">送出訂單</button>
+   <button class="btn" onclick="removeItems()">清空購物車</button>
+   <button class="btn" onclick="showMenu()">回到選單</button>
+   <p id="message"></p>
+ </div>
+
+ <script>
+   const menuItems = {
+     "鮮好茶": [
+       { name: "茉莉綠茶", price: 30 },
+       { name: "高山青茶", price: 30 },
+       { name: "頂級烏龍茶", price: 40 },
+       { name: "古早味紅茶", price: 30 }, // 新增並放在這裡
+       { name: "花香紅茶", price: 35 },
+       { name: "金萱茶", price: 40 }, // 變更位置
+       { name: "古早味冬瓜茶(糖度固定)", price: 30 },
+       { name: "古早味麥茶", price: 30 }
+     ],
+     "找新鮮": [
+       { name: "檸檬多多", price: 45 },
+       { name: "百香CC", price: 50 },
+       { name: "百香多多", price: 55 },
+       { name: "柳橙綠茶", price: 55 },
+       { name: "百香柳橙茶", price: 55 },
+       { name: "楊枝甘露", price: 75 },
+       { name: "繽紛水果茶", price: 50 },
+     ],
+     "想喝奶": [
+       { name: "黑糖珍珠鮮奶", price: 65 },
+       { name: "黑糖奶茶", price: 50 },
+       { name: "珍珠奶茶", price: 60 },
+       { name: "芋頭鮮奶", price: 55 },
+       { name: "黑糖鮮奶", price: 55 },
+       { name: "芋頭奶茶", price: 60 }
+     ],
+    "找果汁": [
+       { name: "柳橙汁", price: 55 },
+       { name: "西瓜汁", price: 55 },
+       { name: "葡萄汁", price: 55 },
+       { name: "西瓜牛奶", price: 60 },
+       { name: "葡萄柚汁", price: 60 },
+       { name: "綜合果汁", price: 70 },
+       { name: "葡萄蘋果汁", price: 70 },
+       { name: "紫色蔬果汁", price: 65 }
+    ],
+     "來點冰(5月~10月限定)": [
+       { name: "芒果冰沙", price: 65 },
+       { name: "西瓜冰沙", price: 65 },
+       { name: "芒果牛奶冰沙", price: 70 },
+       { name: "剉冰", price: 60 },
+       { name: "芒果剉冰", price: 75 },
+       { name: "西瓜剉冰", price: 75 },
+       { name: "牛奶冰沙", price: 70 },
+       { name: "選料冰沙(限內用、來店外帶，最多選2種料)", price: 80 }
+     ],
+     "好溫暖(11月~3月限定)": [
+       { name: "桂圓茶", price: 50 },
+       { name: "桂圓紅棗茶", price: 55 }
+    ]
+   };
+
+   // 定義加點料的項目和價格
+   const addOnItems = {
+       "小珍珠": 10,
+       "波霸": 10,
+       "椰果": 10,
+       "仙草凍": 15,
+       "粉粿": 15,
+       "粉角": 15,
+       "粉條": 15,
+       "牛奶": 20
+   };
+
+   const cart = [];
+
+   function renderMenu() {
+     const menuDiv = document.getElementById("menu");
+     menuDiv.innerHTML = ''; // 清空原有內容，避免重複渲染
+     Object.keys(menuItems).forEach(category => {
+       const categoryDiv = document.createElement("div");
+       categoryDiv.className = "category";
+       const header = document.createElement("h2");
+       header.textContent = category;
+       categoryDiv.appendChild(header);
+
+       menuItems[category].forEach(item => {
+         // 為每個菜單項目創建一個獨特的 ID，以便於編輯時定位
+         const menuItemUniqueId = `${category}-${item.name.replace(/[^a-zA-Z0-9-]/g, '')}`;
+
+         const el = document.createElement("div");
+         el.className = "menu-item";
+         el.setAttribute('data-menu-item-id', menuItemUniqueId); // 添加 data 屬性
+
+         let optionsHtml = '';
+         
+         const sugarOptions = ["正常糖", "少糖", "半糖", "微糖", "無糖"];
+         const iceOptions = ["正常冰", "少冰", "微冰", "去冰", "溫", "熱"];
+
+         // 判斷該品項是否應該有糖度選項
+         let hasSugarOption = ["鮮好茶", "找新鮮"].includes(category);
+         if (item.name === "楊枝甘露" || category === "想喝奶") {
+             hasSugarOption = false;
+         }
+
+         // 判斷該品項是否應該有冰度選項
+         let hasIceOption = ["鮮好茶", "找新鮮", "想喝奶", "找果汁"].includes(category);
+         if (["來點冰(5月~10月限定)", "好溫暖(11月~3月限定)"].includes(category)) {
+             hasIceOption = false;
+         }
+
+         // 判斷該品項是否應該有加點料選項
+         let hasAddOnOption = ["鮮好茶", "找新鮮"].includes(category);
+         if (["楊枝甘露", "繽紛水果茶"].includes(item.name) || category === "想喝奶") {
+             hasAddOnOption = false;
+         }
+
+
+         let sugarSelectHtml = '';
+         if (hasSugarOption) {
+             sugarSelectHtml = `<select class="sugar-level" id="sugar-${menuItemUniqueId}">`;
+             sugarOptions.forEach(option => {
+               if (item.name === "古早味冬瓜茶(糖度固定)") {
+                 sugarSelectHtml += `<option value="${option}" ${option === "正常糖" ? "selected" : "disabled"}>${option}</option>`;
+               } else {
+                 sugarSelectHtml += `<option value="${option}">${option}</option>`;
+               }
+             });
+             sugarSelectHtml += `</select>`;
+         }
+
+         let iceSelectHtml = '';
+         if (hasIceOption) {
+             iceSelectHtml = `<select class="ice-level" id="ice-${menuItemUniqueId}">`;
+             iceOptions.forEach(option => {
+               if (category === "找果汁") {
+                 if (option !== "溫" && option !== "熱") {
+                   iceSelectHtml += `<option value="${option}">${option}</option>`;
+                 }
+               } else {
+                 iceSelectHtml += `<option value="${option}">${option}</option>`;
+               }
+             });
+             iceSelectHtml += `</select>`;
+         }
+
+         if (hasSugarOption || hasIceOption) {
+             optionsHtml += `
+               <div style="font-size: 14px; margin-top: 5px;">
+                 ${hasSugarOption ? `糖度: ${sugarSelectHtml}` : ''} 
+                 ${hasIceOption ? `冰度: ${iceSelectHtml}` : ''}
+               </div>
+             `;
+         }
+        
+         if (hasAddOnOption) {
+             let addOnCheckboxesHtml = '<div class="add-on-options">加點料: ';
+             for (const addOnName in addOnItems) {
+                 const addOnPrice = addOnItems[addOnName];
+                 addOnCheckboxesHtml += `
+                     <label>
+                         <input type="checkbox" class="add-on-checkbox" id="addon-${menuItemUniqueId}-${addOnName.replace(/[^a-zA-Z0-9-]/g, '')}" data-add-on-name="${addOnName}" data-add-on-price="${addOnPrice}">
+                         ${addOnName} ($${addOnPrice})
+                     </label>
+                 `;
+             }
+             addOnCheckboxesHtml += '</div>';
+             optionsHtml += addOnCheckboxesHtml;
+         }
+
+         el.innerHTML = `
+           <div class="item-info">
+             <div>${item.name} - ${item.price} 元</div>
+             ${optionsHtml}
+           </div>
+           <div class="quantity-group">
+             數量：
+             <select class="quantity" id="qty-${menuItemUniqueId}">
+               ${[...Array(10).keys()].map(i => `<option value="${i+1}">${i+1}</option>`).join("")}
+             </select>
+           </div>
+           <button class="btn" onclick="addToCart(this, '${item.name}', ${item.price}, '${category}', '${menuItemUniqueId}')">加入購物車</button>
+         `;
+         categoryDiv.appendChild(el);
+       });
+
+       menuDiv.appendChild(categoryDiv);
+     });
+   }
+
+   function addToCart(button, name, basePrice, category, menuItemUniqueId) {
+     const parentItem = button.closest('.menu-item');
+     const quantity = parseInt(parentItem.querySelector(".quantity").value);
+
+     const sugarSelect = parentItem.querySelector(".sugar-level");
+     const iceSelect = parentItem.querySelector(".ice-level");
+     
+     const sugarLevel = sugarSelect ? sugarSelect.value : "";
+     const iceLevel = iceSelect ? iceSelect.value : "";
+
+     let currentPrice = basePrice;
+     const selectedAddOns = [];
+     
+     const addOnCheckboxes = parentItem.querySelectorAll('.add-on-checkbox:checked');
+     addOnCheckboxes.forEach(checkbox => {
+         const addOnName = checkbox.dataset.addOnName;
+         const addOnPrice = parseInt(checkbox.dataset.addOnPrice);
+         selectedAddOns.push({ name: addOnName, price: addOnPrice });
+         currentPrice += addOnPrice;
+     });
+
+     let displayCartName = name;
+     let optionsDisplay = [];
+     if (sugarLevel) optionsDisplay.push(sugarLevel);
+     if (iceLevel) optionsDisplay.push(iceLevel);
+     
+     if (optionsDisplay.length > 0) {
+        displayCartName = `${name} (${optionsDisplay.join('')})`;
+     }
+
+     const addOnNamesForId = selectedAddOns.map(ao => ao.name).sort().join('-');
+     const uniqueItemKey = `${name}-${sugarLevel}-${iceLevel}-${addOnNamesForId}`;
+
+     const existing = cart.find(item => item.uniqueKey === uniqueItemKey);
+
+     if (existing) {
+       existing.quantity += quantity;
+     } else {
+       cart.push({
+         name: name,
+         basePrice: basePrice,
+         price: currentPrice,
+         quantity: quantity,
+         sugar: sugarLevel,
+         ice: iceLevel,
+         selectedAddOns: selectedAddOns,
+         cartName: displayCartName,
+         uniqueKey: uniqueItemKey,
+         originalCategory: category, // 儲存原始類別
+         menuItemUniqueId: menuItemUniqueId // 儲存菜單項目的唯一ID
+       });
+     }
+     
+     // 重置加點料的選取狀態和數量、糖度、冰度
+     parentItem.querySelector(".quantity").value = "1"; // 數量重置為1
+     if (sugarSelect) sugarSelect.value = "正常糖"; // 糖度重置
+     if (iceSelect) iceSelect.value = "正常冰"; // 冰度重置
+     addOnCheckboxes.forEach(checkbox => {
+         checkbox.checked = false;
+     });
+
+     showToast(`已加入 ${quantity} 份 ${displayCartName}`);
+   }
+
+   function showMenu() {
+     document.getElementById("menu-view").style.display = "block";
+     document.getElementById("cart-view").style.display = "none";
+     document.getElementById("success-view").style.display = "none";
+     // 重新渲染菜單以確保所有選項都重置
+     renderMenu(); 
+   }
+
+   function showCart() {
+     document.getElementById("menu-view").style.display = "none";
+     document.getElementById("cart-view").style.display = "block";
+     document.getElementById("success-view").style.display = "none";
+
+     const list = document.getElementById("cart-list");
+     const totalEl = document.getElementById("total");
+     list.innerHTML = "";
+     let total = 0;
+     cart.forEach((item, index) => {
+       const li = document.createElement("li");
+       let itemText = `${item.cartName} x ${item.quantity}`;
+       
+       if (item.selectedAddOns && item.selectedAddOns.length > 0) {
+           const addOnNames = item.selectedAddOns.map(ao => ao.name).join(', ');
+           itemText += ` (加: ${addOnNames})`;
+       }
+       itemText += ` - ${item.price * item.quantity} 元`;
+       
+       li.innerHTML = `
+            <span>${itemText}</span>
+            <div class="item-actions">
+                <button class="btn btn-small" onclick="editCartItem(${index})">編輯</button>
+                <button class="btn btn-small delete" onclick="deleteCartItem(${index})">刪除</button>
+            </div>
+       `;
+       list.appendChild(li);
+       total += item.price * item.quantity;
+     });
+     totalEl.textContent = total;
+     document.getElementById("message").textContent = "";
+   }
+
+   function deleteCartItem(index) {
+       if (confirm("確定要從購物車中刪除此商品嗎？")) {
+           cart.splice(index, 1);
+           showCart(); // 重新顯示購物車
+           showToast("商品已從購物車中刪除。");
+       }
+   }
+
+   function editCartItem(index) {
+       const itemToEdit = cart[index];
+       // 從購物車中移除該項，因為我們將重新添加它
+       cart.splice(index, 1); 
+       
+       showMenu(); // 返回菜單頁面
+
+       // 等待菜單渲染完成，然後預填選項
+       setTimeout(() => {
+           prefillMenuItem(itemToEdit);
+       }, 50); // 短暫延遲確保DOM更新
+   }
+
+   function prefillMenuItem(item) {
+       const menuItemDiv = document.querySelector(`[data-menu-item-id="${item.menuItemUniqueId}"]`);
+       if (menuItemDiv) {
+           // 預填數量
+           const quantitySelect = menuItemDiv.querySelector(".quantity");
+           if (quantitySelect) {
+               quantitySelect.value = item.quantity;
+           }
+
+           // 預填糖度
+           const sugarSelect = menuItemDiv.querySelector(".sugar-level");
+           if (sugarSelect) {
+               sugarSelect.value = item.sugar;
+           }
+
+           // 預填冰度
+           const iceSelect = menuItemDiv.querySelector(".ice-level");
+           if (iceSelect) {
+               iceSelect.value = item.ice;
+           }
+
+           // 預填加點料
+           item.selectedAddOns.forEach(addOn => {
+               const addOnCheckbox = menuItemDiv.querySelector(`.add-on-checkbox[data-add-on-name="${addOn.name}"]`);
+               if (addOnCheckbox) {
+                   addOnCheckbox.checked = true;
+               }
+           });
+
+           // 可以滾動到該項目，讓用戶更容易看到
+           menuItemDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+           showToast(`正在編輯 ${item.name}，請修改後再次加入購物車。`);
+
+       } else {
+           console.warn("未找到要編輯的菜單項目：", item.menuItemUniqueId);
+           showToast("無法找到要編輯的商品，請手動重新選擇。");
+       }
+   }
+
+
+   function removeItems() {
+     cart.length = 0;
+     showCart();
+     document.getElementById("message").textContent = "購物車已清空。";
+   }
+
+   function toggleAddress() {
+     const orderType = document.getElementById("orderType").value;
+     document.getElementById("addressGroup").style.display = orderType === "外送" ? "block" : "none";
+   }
+
+   function toggleInvoiceFields() {
+     const type = document.getElementById("invoiceType").value;
+     document.getElementById("carrierGroup").style.display = type === "載具" ? "block" : "none";
+     document.getElementById("taxIdGroup").style.display = type === "統編" ? "block" : "none";
+   }
+
+   function toggleBarcode() {
+     const payment = document.getElementById("payment").value;
+     const barcodeGroup = document.getElementById("paymentBarcodeGroup");
+     const barcodeLabel = document.getElementById("paymentBarcodeLabel");
+
+     if (payment === "LINE PAY" || payment === "APPLE PAY") {
+       barcodeGroup.style.display = "block";
+       barcodeLabel.textContent = `請輸入 ${payment} 付款碼：`;
+     } else {
+       barcodeGroup.style.display = "none";
+     }
+   }
+
+   function submitOrder() {
+     if (cart.length === 0) {
+       document.getElementById("message").textContent = "請先選擇餐點喔！";
+       return;
+     }
+
+     const name = document.getElementById("name").value;
+     const phone = document.getElementById("phone").value;
+     const orderType = document.getElementById("orderType").value;
+     const address = document.getElementById("address").value;
+     const payment = document.getElementById("payment").value;
+     const notes = document.getElementById("notes").value;
+
+     const invoiceType = document.getElementById("invoiceType").value;
+     const paymentBarcodeInput = document.getElementById("paymentBarcodeInput").value;
+
+     if ((payment === "LINE PAY" || payment === "APPLE PAY") && !paymentBarcodeInput) {
+       document.getElementById("message").textContent = `請輸入 ${payment} 的付款碼。`;
+       return;
+     }
+
+     const carrier = document.getElementById("carrier").value;
+     const taxId = document.getElementById("taxId").value;
+
+     if (!name || !phone || (orderType === "外送" && !address)) {
+       document.getElementById("message").textContent = "請完整填寫所有必要欄位。";
+       return;
+     }
+
+     if (invoiceType === "載具" && !carrier) {
+       document.getElementById("message").textContent = "請輸入載具條碼。";
+       return;
+     }
+
+     if (invoiceType === "統編" && !taxId) {
+       document.getElementById("message").textContent = "請輸入統一編號。";
+       return;
+     }
+
+     console.log("訂單資訊：");
+     console.log("姓名：", name);
+     console.log("電話：", phone);
+     console.log("用餐方式：", orderType);
+     if (orderType === "外送") {
+       console.log("地址：", address);
+     }
+     console.log("付款方式：", payment);
+     if (payment === "LINE PAY" || payment === "APPLE PAY") {
+       console.log("付款碼：", paymentBarcodeInput);
+     }
+     console.log("發票方式：", invoiceType);
+     if (invoiceType === "載具") {
+       console.log("載具條碼：", carrier);
+     }
+     if (invoiceType === "統編") {
+       console.log("統一編號：", taxId);
+     }
+     console.log("備註：", notes);
+     console.log("購物車內容：", cart);
+     console.log("總金額：", document.getElementById("total").textContent);
+
+
+     document.getElementById("cart-view").style.display = "none";
+     document.getElementById("success-view").style.display = "block";
+     cart.length = 0; // 清空購物車
+     // 清空表單欄位
+     document.getElementById("name").value = "";
+     document.getElementById("phone").value = "";
+     document.getElementById("address").value = "";
+     document.getElementById("paymentBarcodeInput").value = "";
+     document.getElementById("carrier").value = "";
+     document.getElementById("taxId").value = "";
+     document.getElementById("notes").value = "";
+     document.getElementById("message").textContent = "";
+   }
+
+   function showToast(message) {
+     const toast = document.getElementById("toast");
+     toast.textContent = message;
+     toast.style.display = "block";
+     setTimeout(() => {
+       toast.style.display = "none";
+     }, 2000);
+   }
+
+   showMenu(); // 首次載入頁面時顯示菜單
+   renderMenu(); // 首次載入頁面時渲染菜單
+ </script>
+
+<div id="toast" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+ background-color:#333; color:#fff; padding:10px 20px; border-radius:5px; font-size:16px; z-index:1000;">
+ 已加入購物車！
+</div>
+
+</body>
+</html>
